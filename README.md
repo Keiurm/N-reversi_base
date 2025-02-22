@@ -1,0 +1,2 @@
+# N-reversi_base
+ 
