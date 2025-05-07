@@ -51,5 +51,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "reversi_base.sln"
+    "dotnet.defaultSolution": "N-reversi_base.sln"
 }

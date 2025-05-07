@@ -56,7 +56,10 @@ public class Game_SceneController : MonoBehaviour
     /// <param name="cell">Cell.</param>
     public void OnCellClick(Game_Cell cell)
     {
-
+        field.Lock();
+        cell.SetStoneColor(CurrentPlayerStoneColor);
+        Game_SoundManager.Instance.put.Play();
+        field.TurnOverStoneIfPossible(cell);
     }
 
     /// <summary>
@@ -64,6 +67,7 @@ public class Game_SceneController : MonoBehaviour
     /// </summary>
     public void OnTurnStoneFinished()
     {
+        StartCoroutine(NextTurnCoroutine());
 
     }
 
@@ -73,9 +77,26 @@ public class Game_SceneController : MonoBehaviour
     /// <returns>The turn coroutine.</returns>
     IEnumerator NextTurnCoroutine()
     {
-        yield break;
+        if (field.CountStone(Game_Field.StoneColor.None) == 0)
+        {
+            yield return message.Show("Game Finished");
+            StartCoroutine(GameFinishedCoroutine());
+        }
+        else
+        {
+            IncrementTurnNumber();
+            if (field.CountClickableCells() == 0)
+            {
+                yield return message.Show(string.Format("{0} cannot put stone. TURN SKIPPED", CurrentPlayerStoneColor.ToString()));
+                IncrementTurnNumber();
+                if (field.CountClickableCells() == 0)
+                {
+                    yield return message.Show(string.Format("{0} cannot put stone too. GAME FINISHED", CurrentPlayerStoneColor.ToString()));
+                    StartCoroutine(GameFinishedCoroutine());
+                }
+            }
+        }
     }
-
     /// <summary>
     /// 手番番号をインクリメントし、盤面を更新します
     /// </summary>
@@ -91,6 +112,19 @@ public class Game_SceneController : MonoBehaviour
 
     IEnumerator GameFinishedCoroutine()
     {
-        yield break;
+        string winner = "DRAW";
+        int blackCount = field.CountStone(Game_Field.StoneColor.Black);
+        int whiteCount = field.CountStone(Game_Field.StoneColor.White);
+        if (blackCount > whiteCount)
+        {
+            winner = "Black WIN";
+        }
+        else if (blackCount < whiteCount)
+        {
+            winner = "WHITE WIN";
+        }
+        yield return message.Show($"{winner} ({blackCount}:{whiteCount})");
+        GameStart();
     }
+
 }

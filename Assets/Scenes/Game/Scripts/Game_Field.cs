@@ -34,13 +34,14 @@ public class Game_Field : UIBehaviour
         {
             for (int x = 0; x < 8; x++)
             {
-                Game_Cell cell = Instantiate(cellPrefab, transform);
+                Game_Cell cell = Instantiate(cellPrefab);
                 cell.transform.SetParent(transform);
                 cell.transform.localScale = Vector3.one;
                 cell.Initialize(x, y);
                 cells.Add(cell);
             }
         }
+        cellPrefab.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -82,7 +83,10 @@ public class Game_Field : UIBehaviour
     /// </summary>
     public void Lock()
     {
-
+        foreach (Game_Cell cell in cells)
+        {
+            cell.SetClickable(false);
+        }
     }
 
     /// <summary>
@@ -91,6 +95,7 @@ public class Game_Field : UIBehaviour
 
     public void TurnOverStoneIfPossible(Game_Cell cell)
     {
+        StartCoroutine(CallTurnStoneCoroutine(cell));
 
     }
 
@@ -100,7 +105,15 @@ public class Game_Field : UIBehaviour
 
     public int CountStone(StoneColor stoneColor)
     {
-        return 0;
+        int returnCount = 0;
+        foreach (Game_Cell cell in cells)
+        {
+            if (cell.GetStoneColor() == stoneColor)
+            {
+                returnCount++;
+            }
+        }
+        return returnCount;
     }
 
     /// <summary>
@@ -108,7 +121,16 @@ public class Game_Field : UIBehaviour
     /// </summary>
     public int CountClickableCells()
     {
-        return 0;
+        int returnCount = 0;
+        foreach (Game_Cell cell in cells)
+        {
+            if (cell.GetClickable() == true)
+            {
+                returnCount++;
+            }
+        }
+        return returnCount;
+
     }
 
     /// <summary>
@@ -116,7 +138,10 @@ public class Game_Field : UIBehaviour
     /// </summary>
     public void UpdateCellsClickable(StoneColor stoneColor)
     {
-
+        foreach (Game_Cell cell in cells)
+        {
+            cell.SetClickable(IsStonePuttableCell(cell, stoneColor));
+        }
     }
 
     /// <summary>
@@ -125,9 +150,16 @@ public class Game_Field : UIBehaviour
 
     bool IsStonePuttableCell(Game_Cell cell, StoneColor stoneColor)
     {
-        if (true)
+        if (cell.GetStoneColor() == StoneColor.None)
         {
-            return true;
+            return Turncheck(cell, stoneColor, 1, 0) ||
+                   Turncheck(cell, stoneColor, -1, 0) ||
+                   Turncheck(cell, stoneColor, 0, 1) ||
+                   Turncheck(cell, stoneColor, 0, -1) ||
+                   Turncheck(cell, stoneColor, 1, 1) ||
+                   Turncheck(cell, stoneColor, -1, -1) ||
+                   Turncheck(cell, stoneColor, -1, 1) ||
+                   Turncheck(cell, stoneColor, 1, -1);
         }
         else
         {
@@ -141,7 +173,28 @@ public class Game_Field : UIBehaviour
 
     bool Turncheck(Game_Cell cell, StoneColor stoneColor, int xDirection, int yDirection)
     {
-        return true;
+        int x = cell.X;
+        int y = cell.Y;
+        bool existEnemyStone = false;
+        while (true)
+        {
+            x += xDirection;
+            y += yDirection;
+            Game_Cell targetCell = GetCell(x, y);
+            if (targetCell == null || targetCell.GetStoneColor() == StoneColor.None)
+            {
+                return false;
+            }
+            else if (targetCell.GetStoneColor() == stoneColor)
+            {
+                return existEnemyStone;
+            }
+            else
+            {
+                existEnemyStone = true;
+            }
+        }
+
     }
 
     /// <summary>
@@ -150,7 +203,25 @@ public class Game_Field : UIBehaviour
 
     IEnumerator CallTurnStoneCoroutine(Game_Cell cell)
     {
-        yield break;
+        foreach (Game_Cell c in cells)
+        {
+            c.SetClickable(false);
+        }
+
+        possibleCoroutineCount = 8;
+        StartCoroutine(TurnStoneCoroutine(cell, 1, 0));
+        StartCoroutine(TurnStoneCoroutine(cell, -1, 0));
+        StartCoroutine(TurnStoneCoroutine(cell, 0, 1));
+        StartCoroutine(TurnStoneCoroutine(cell, 0, -1));
+        StartCoroutine(TurnStoneCoroutine(cell, 1, 1));
+        StartCoroutine(TurnStoneCoroutine(cell, -1, -1));
+        StartCoroutine(TurnStoneCoroutine(cell, -1, 1));
+        StartCoroutine(TurnStoneCoroutine(cell, 1, -1));
+        while (possibleCoroutineCount > 0)
+        {
+            yield return new WaitForSeconds(0.1f);
+        }
+        Game_SceneController.Instance.OnTurnStoneFinished();
     }
 
     /// <summary>
@@ -159,7 +230,32 @@ public class Game_Field : UIBehaviour
 
     IEnumerator TurnStoneCoroutine(Game_Cell cell, int xDirection, int yDirection)
     {
-        yield break;
+        if (!Turncheck(cell, cell.GetStoneColor(), xDirection, yDirection))
+        {
+            possibleCoroutineCount--;
+            yield break;
+        }
+
+        int x = cell.X;
+        int y = cell.Y;
+
+        while (true)
+        {
+            x += xDirection;
+            y += yDirection;
+            Game_Cell targetCell = GetCell(x, y);
+            if (targetCell == null || targetCell.GetStoneColor() == cell.GetStoneColor())
+            {
+                possibleCoroutineCount--;
+                yield break;
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.5f);
+                targetCell.SetStoneColor(cell.GetStoneColor());
+                Game_SoundManager.Instance.turn.Play();
+            }
+        }
     }
 
     /// <summary>
